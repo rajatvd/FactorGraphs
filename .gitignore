@@ -1,1 +1,6 @@
 __pycache__
+media
+Tex
+videos
+*.ipynb
+.ipynb_checkpoints
