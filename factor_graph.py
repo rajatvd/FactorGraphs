@@ -10,6 +10,9 @@ def pos2d_to_np3d(pos):
 
 # %%
 
+# TODO: perhaps subclass nx.MultiDiGraph and add some nice pure compute
+# functions for combining nodes and stuff.
+
 
 def factor_graph(factors, einpath):
     fg = nx.MultiDiGraph()  # make graph
