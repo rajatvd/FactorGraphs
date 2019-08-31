@@ -183,8 +183,14 @@ def combine_nodes(n1, n2, mnG):
             # all edges from n2 have their axis increased
             mnG.graph.edges[a, b, k]['axis'] += axis_increase
 
-    # get new graph by contracting nodes
+    # get new graph by contracting nodes.
+    # This is where we need to enforce the graph to be a dirceted one, to force
+    # consistent behavior by the networkx contract function for factor and
+    # variable contractions
     new_graph = nx.contracted_nodes(mnG.graph, n1, n2)
+
+    # note that we made the new graph after modifying the axis identifiers in
+    # the original graph itself. this will matter later
 
     # relabel inplace
     nx.relabel_nodes(new_graph, {n1: new_node_name}, copy=False)
@@ -278,7 +284,8 @@ def combine_nodes(n1, n2, mnG):
             del new_edges[n1_, n2_]
 
     # Now we add back the edge mobjects we transformed to the ManimGraph's
-    # edge dict, but with the correct key.
+    # edge dict, but with the correct key. We use the consistent dirceted
+    # storage of the edges (factor -> variable) to make this easier.
     for n1_, n2_, k in n1_edges+n2_edges:
         # we know the nodes between which the edges are, but in the case of
         # multi-edges, the indetified k will change
@@ -297,27 +304,28 @@ def combine_nodes(n1, n2, mnG):
                 new_edges[n1_, new_node_name] = {}
             new_edges[n1_, new_node_name][new_k] = mnG.edges[n1_, n2_][k]
 
+    # We need to do a slightly different procedure for factors, but essentially
+    # the same use of the axis identifier
     if t == 'factor':
         for n1_, n2_, k in n1_edges+n2_edges:
+            # Notice that the axis counts were updated in the original graph
+            # this allows us to still use it to uniquely identify edges, even
+            # though they will come from different factors, because the axis
+            # updates made it so that the two factors being combined have
+            # valid axis counts after the contraction
             ind = mnG.graph.edges[n1_, n2_, k]['axis']
-            # if (n1_, n2_, k) in n2_edges:
-            #     ind += axis_increase
             for key, v in new_graph[new_node_name][n2_].items():
                 if v['axis'] == ind:
                     new_k = key
                     break
+
+            # similar dict adding back as in variable case
             if (new_node_name, n2_) not in new_edges.keys():
                 new_edges[new_node_name, n2_] = {}
             new_edges[new_node_name, n2_][new_k] = mnG.edges[n1_, n2_][k]
 
     mnG.graph = new_graph
     mnG.edges = new_edges
-    # print(new_graph)
-    # print([ed.values() for ed in mnG.edges.values()])
-    # mnG.remove(*[a for a in ed.values() for ed in mnG.edges.values()])
-    # mnG.edges = {}
-    # mnG.add_edges()
-    # print(new_edges, mnG.graph.edges)
 
     return [move1, move2, *move_edges]
 
