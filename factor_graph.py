@@ -140,6 +140,8 @@ def get_fg_edge_curve(n1, n2, k, G):
 
 # %%
 def combine_nodes(n1, n2, mnG):
+
+    # straightforward assertions
     assert mnG.graph.nodes[n1]['type'] == mnG.graph.nodes[n2]['type'], \
         "cannot combine nodes of different types"
 
@@ -148,6 +150,9 @@ def combine_nodes(n1, n2, mnG):
     if t == 'variable':
         assert mnG.graph.nodes[n1]['summed'] == mnG.graph.nodes[n2]['summed'],\
             "cannot combine summed with non summed variable"
+
+        assert mnG.graph.nodes[n1]['size'] == mnG.graph.nodes[n2]['size'],\
+            "cannot combine variables of different sizes"
 
     # get initial positions
     pos1 = np.array(mnG.graph.nodes[n1]['pos'])
@@ -254,7 +259,8 @@ def combine_nodes(n1, n2, mnG):
     # loop over all edges that need to move
     for n1_, n2_, k in n1_edges+n2_edges:
 
-        # currently persist any points
+        # currently persist any points TODO: change points smartly (at least
+        # for multiedges)
         pnts = mnG.graph.edges[n1_, n2_, k].get('points', [])
 
         if t == 'variable':
@@ -340,58 +346,49 @@ def sum_node(n, mnG):
 
 # %%
 
-# class ManimFG(mnx.ManimGraph):
-#     def __init__(self, factors, einpath, **kwargs):
-#         super().__init__(factor_graph(factors, einpath),
-#                          get_fg_node, get_fg_edge_curve,
-#                          **kwargs)
-#
-#     def combine_nodes(self, n1, n2):
-#         assert self.graph.nodes[n1]['type'] == self.graph.nodes[n2]['type'], \
-#             "cannot combine nodes of different types"
-#
-#         t = self.graph.nodes[n1]['type']
-#
-#         if t == 'variable':
-#             assert self.graph.nodes[n1]['summed'] == \
-#             self.graph.nodes[n2]['summed'], \
-#                 "cannot combine summed with non summed variable"
-#
-#         pos1 = np.array(self.graph.nodes[n1]['pos'])
-#         pos2 = np.array(self.graph.nodes[n2]['pos'])
-#
-#         new_pos = (pos1+pos2) / 2
-#
-#         # move1 = ApplyMethod(self.nodes[n1].move_to, pos2d_to_np3d(new_pos))
-#         # move2 = ApplyMethod(self.nodes[n2].move_to, pos2d_to_np3d(new_pos))
-#
-#         self.nodes[n1].move_to(pos2d_to_np3d(new_pos))
-#         self.nodes[n2].move_to(pos2d_to_np3d(new_pos))
-#
-#         n1_edges = []
-#         n2_edges = []
-#         for ed in self.graph.edges:
-#             if n1 in ed:
-#                 n1_edges.append(ed)
-#             elif n2 in ed:
-#                 n2_edges.append(ed)
-#
-#         move_edges = []
-#         for n1_, n2_, k in n1_edges+n2_edges:
-#             pnts = self.graph.edges[n1_, n2_, k].get('points', [])
-#             # move_edges.append(
-#             #     ApplyMethod(self.edges[n1_, n2_][k].set_points_smoothly,
-#             #                 [pos2d_to_np3d(self.graph.nodes[n1_]['pos']),
-#             #                  *[pos2d_to_np3d(p) for p in pnts],
-#             #                  pos2d_to_np3d(new_pos)])
-#             # )
-#             self.edges[n1_, n2_][k].set_points_smoothly(
-#                 [pos2d_to_np3d(self.graph.nodes[n1_]['pos']),
-#                  *[pos2d_to_np3d(p) for p in pnts],
-#                  pos2d_to_np3d(new_pos)])
-#
-#         # return [move1, move2, *move_edges]
-#         return self
+
+def combine_multiedges(f, v, mnG):
+    """Combine all multiedges between the factor f and variable v.
+
+    mnG is a ManimGraph wrapping a valid factor graph (which is a MultiDiGraph).
+
+    Animation: all the edges will be combined into a straight line edge
+    between f and v.
+
+    Computation: performs a diag-style indexing of the factor f along all axes
+    which have an edge to variable v.
+
+    Returns
+    -------
+    list
+        A list of animations for combining the edges into one.
+
+    """
+
+    pass
+
+
+# %%
+def compute_sum(v, mnG):
+    """Compute the sum of a variable v already marked to be summed.
+
+    Note that the variable v must have only one edge to a factor, so that the
+    sum is forced to be a simple linear order computation in the size of the
+    variable, and does not actually involve any network contraction.
+
+    Animation: the node and edge just fade away.
+
+    Computation: sum over the given variable and update the factor connected
+    to it. (akin to marginalization)
+
+    Returns
+    -------
+    list
+        List of animations.
+
+    """
+    pass
+
 # %%
 
 
@@ -400,8 +397,8 @@ class Test(Scene):
         np.random.seed()
         A = np.random.randn(1000, 100)
         B = np.random.randn(100, 20)
-        C = np.random.randn(100, 50)
-        D = np.random.randn(100, 100, 50)
+        C = np.random.randn(100, 100)
+        D = np.random.randn(100, 100, 100)
         E = np.random.randn(20)
         factors = {
             'A': A,
@@ -414,7 +411,10 @@ class Test(Scene):
         # einpath = 'iik -> ik'
         einpath = 'xu,uy,uv,zwv,y -> xyzw'
 
-        mfg = ManimFG(factors, einpath)
+        fg = factor_graph(factors, einpath)
+        mfg = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
 
         self.play(ShowCreation(mfg))
+        self.wait(2)
+        self.play(*combine_nodes('u', 'v', mfg))
         self.wait(2)
