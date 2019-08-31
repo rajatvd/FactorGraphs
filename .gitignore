@@ -4,3 +4,4 @@ Tex
 videos
 *.ipynb
 .ipynb_checkpoints
+*.png
