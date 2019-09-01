@@ -143,6 +143,23 @@ def get_fg_edge_curve(n1, n2, k, G):
 
 # %%
 def combine_nodes(n1, n2, mnG):
+    """Short summary.
+
+    Parameters
+    ----------
+    n1 : type
+        Description of parameter `n1`.
+    n2 : type
+        Description of parameter `n2`.
+    mnG : type
+        Description of parameter `mnG`.
+
+    Returns
+    -------
+    type
+        Description of returned object.
+
+    """
 
     # straightforward assertions
     assert mnG.graph.nodes[n1]['type'] == mnG.graph.nodes[n2]['type'], \
