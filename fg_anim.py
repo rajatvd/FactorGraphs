@@ -171,6 +171,8 @@ def transform_graph(mng, G):
             anims.append(Succession(Transform(mobj, VGroup(*contracts_to)),
                                     FadeOut(mobj)))
 
+        # dont actually remove so that the edges in the back remain in the
+        # back while fading. this might bite later though
         # mng.remove(mobj)
         del mng.nodes[mob_id]
         del mng.id_to_node[mob_id]
