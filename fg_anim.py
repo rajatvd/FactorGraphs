@@ -1,20 +1,55 @@
 """Animations related to graph transforms"""
 from manimlib.imports import *
-
 import networkx as nx
 from manimnx import manimnx as mnx
 from itertools import chain
 
-# %% TODO doc this
+# %%
 
 
 def to_3d(pos):
+    """Convert 2d coords to 3d numpy arrays by adding a 0 in the z coordinate.
+
+    Converts already 3d coords to numpy arrays.
+
+    Parameters
+    ----------
+    pos : tuple, list, ndarray
+        The coords to be converted to 3d.
+
+    Returns
+    -------
+    numpy array
+        3d coords.
+
+    """
+    if len(pos) == 3:
+        return np.array(pos)
     return np.array(list(pos)+[0])
 
-# %% TODO doc this
+# %%
 
 
 def get_fg_node(n, G):
+    """Get a mobject for node n in the factor graph G.
+
+    Green square for factors and white/gray circle for variables depending on
+    whether they are summed or not. The name of the node is also present in the
+    shape.
+
+    Parameters
+    ----------
+    n : node key
+        Node key in factor graph G for which to get the mobject.
+    G : MultiDiGraph
+        The factor graph.
+
+    Returns
+    -------
+    VGroup
+        The square/circle mobject along with the name inside it.
+
+    """
     node = G.node[n]
     type_to_shape = {
         'variable': Circle,
@@ -35,10 +70,30 @@ def get_fg_node(n, G):
     grp.move_to(x*RIGHT + y*UP)
     return grp
 
-# %% TODO doc this
+# %%
 
 
 def get_fg_edge_curve(ed, G):
+    """Get a mobject for edge ed in the factor graph G.
+
+    A smooth curve between the start and end nodes of the edge, passing through
+    the points in the 'points' attribute of the edge. The stroke width is
+    proportional to the sqrt of the size of variable which this edge is
+    connected to.
+
+    Parameters
+    ----------
+    n : edge key
+        Edge key in factor graph G for which to get the mobject.
+    G : MultiDiGraph
+        The factor graph.
+
+    Returns
+    -------
+    VMobject
+        The bezier curve VMobject for the edge.
+
+    """
     s = G.edges[ed]['size']
     node1 = G.node[ed[0]]
     node2 = G.node[ed[1]]
@@ -207,30 +262,68 @@ def transform_graph(mng, G):
     return anims
 
 
-# %% TODO: fix this up
+# %%
 class Test(Scene):
     def construct(self):
+        import sys
+        sys.path.append('.')
+        from factor_graph import factor_graph
         np.random.seed()
-        A = np.random.randn(1000, 100)
-        B = np.random.randn(100, 20)
-        C = np.random.randn(100, 100)
-        D = np.random.randn(100, 100, 100)
+
+        A = np.random.randn(30, 30)
+        B = np.random.randn(30, 30)
+        C = np.random.randn(30, 30)
+        D = np.random.randn(10, 10, 10)
         E = np.random.randn(20)
         factors = {
             'A': A,
             'B': B,
             'C': C,
-            'D': D,
-            'E': E,
         }
 
-        # einpath = 'iik -> ik'
-        einpath = 'xu,uy,uv,zwv,y -> xyzw'
+        pre_pos = {
+            'A': (-4, -3),
+            'i': (-2, -1),
+            'j': (-2, -3),
+            'B': (4, -3),
+            'k': (2, -3),
+            'l': (2, -2),
+            'C': (0, 3),
+            'm': (-1, 2),
+            'n': (1, 2),
+        }
 
-        fg = factor_graph(factors, einpath)
-        mfg = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+        a1 = factor_graph(factors, 'ij,kl,mn -> ijklmn')
+        for node, pos in pre_pos.items():
+            a1.nodes[node]['pos'] = pos
 
-        self.play(ShowCreation(mfg))
-        self.wait(2)
-        self.play(*combine_nodes('u', 'v', mfg))
+        mfg1 = mnx.ManimGraph(a1, get_fg_node, get_fg_edge_curve)
+        self.play(ShowCreation(mfg1))
+
+        a2 = a1.copy()
+        a2.add_node('D', type='factor', factor=C, pos=(0, 0), expansion={
+                    'A': a1.nodes['A'], ('A', 'i', 0): a1.edges[('A', 'i', 0)]})
+        a2.add_node('E', type='factor', factor=C, pos=(0, 1))
+        self.play(*transform_graph(mfg1, a2))
+
+        a3 = a2.copy()
+        a3.add_node('f', type='variable', pos=(4, 1), summed='False')
+        a3.add_edge('D', 'f', size=100)
+        self.play(*transform_graph(mfg1, a3))
+
+        a4 = a3.copy()
+        a4.nodes['D']['pos'] = (5, 3)
+        a4.remove_node('E')
+        self.play(*transform_graph(mfg1, a4))
+
+        a5 = nx.contracted_nodes(a4, 'D', 'A')
+        a5.remove_node('B')
+        self.play(*transform_graph(mfg1, a5))
+
+        a6 = nx.contracted_nodes(a5, 'C', 'D')
+        self.play(*transform_graph(mfg1, a6))
+
+        a7 = a6.copy()
+        a7.nodes['C']['pos'] = (0, 0)
+        self.play(*transform_graph(mfg1, a7))
         self.wait(2)
