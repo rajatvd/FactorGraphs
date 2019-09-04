@@ -7,6 +7,30 @@ import string
 
 
 def factor_graph(factors, einpath):
+    """Create a factor graph as a networkx MultiDiGraph.
+
+    A MultiDiGraph is used as opposed to just a MultiGraph to enforce
+    consistency. Edges are always factor -> variable. This property is
+    maintained even when nodes are contracted using nx.contracted_nodes and can
+    be relied on for further functionality of code. Note that this is not
+    needed from a mathematical point of view, and is purely for convenient
+    coding.
+
+    Parameters
+    ----------
+    factors : dict
+        Dict mapping factor name to the numpy array containing the factor data.
+    einpath : str
+        A valid einstein summation which describes the relations between factors
+        and implicitly defines variables as well. This is used to build the 
+        graph.
+
+    Returns
+    -------
+    nx.MultiDiGraph
+        The factor graph.
+
+    """
     fg = nx.MultiDiGraph()  # make graph
     for f_name, f in factors.items():  # add factors
         fg.add_node(f_name, factor=f, type='factor')
