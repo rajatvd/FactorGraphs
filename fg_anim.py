@@ -111,9 +111,18 @@ def get_fg_edge_curve(ed, G):
 
     return edge
 
+# %%
+
+
+class TransformAndRemoveSource(Transform):
+    def clean_up_from_scene(self, scene):
+        super().clean_up_from_scene(scene)
+        scene.remove(self.mobject)
 
 # TODO: move this to manimnx package
 # %% TODO: take in custom transform for edges and nodes
+
+
 def transform_graph(mng, G):
     """Transforms the graph in ManimGraph mng to the graph G.
 
@@ -226,11 +235,12 @@ def transform_graph(mng, G):
         if len(contracts_to) == 0:
             anims.append(FadeOut(mobj))
         else:
-            anims.append(Succession(Transform(mobj, VGroup(*contracts_to)),
-                                    FadeOut(mobj)))
+            # anims.append(Succession(Transform(mobj, VGroup(*contracts_to)),
+            #                         FadeOut(mobj)))
+            anims.append(TransformAndRemoveSource(mobj, VGroup(*contracts_to)))
 
         # dont actually remove so that the edges in the back remain in the
-        # back while fading. this might bite later though
+        # back while transforming. this might bite later though
         # mng.remove(mobj)
         del mng.nodes[mob_id]
         del mng.id_to_node[mob_id]
@@ -252,8 +262,7 @@ def transform_graph(mng, G):
         if len(contracts_to) == 0:
             anims.append(FadeOut(mobj))
         else:
-            anims.append(Succession(Transform(mobj, VGroup(*contracts_to)),
-                                    FadeOut(mobj)))
+            anims.append(TransformAndRemoveSource(mobj, VGroup(*contracts_to)))
 
         # mng.remove(mobj)
         del mng.edges[mob_id]
@@ -268,7 +277,7 @@ class Test(Scene):
     def construct(self):
         import sys
         sys.path.append('.')
-        from factor_graph import factor_graph
+        from factor_graph import factor_graph, combine_multiedges
         np.random.seed()
 
         A = np.random.randn(30, 30)
@@ -298,6 +307,8 @@ class Test(Scene):
         for node, pos in pre_pos.items():
             a1.nodes[node]['pos'] = pos
 
+        a1.edges['A', 'i', 0]['points'] = [(-3, -2)]
+
         mfg1 = mnx.ManimGraph(a1, get_fg_node, get_fg_edge_curve)
         self.play(ShowCreation(mfg1))
 
@@ -317,7 +328,7 @@ class Test(Scene):
         a4.remove_node('E')
         self.play(*transform_graph(mfg1, a4))
 
-        a5 = nx.contracted_nodes(a4, 'D', 'A')
+        a5 = nx.contracted_nodes(a4, 'j', 'i')
         a5.remove_node('B')
         self.play(*transform_graph(mfg1, a5))
 
@@ -327,4 +338,7 @@ class Test(Scene):
         a7 = a6.copy()
         a7.nodes['C']['pos'] = (0, 0)
         self.play(*transform_graph(mfg1, a7))
+
+        a8 = combine_multiedges('A', 'j', a7)
+        self.play(*transform_graph(mfg1, a8))
         self.wait(2)
