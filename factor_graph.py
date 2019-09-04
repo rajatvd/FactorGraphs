@@ -229,5 +229,40 @@ def combine_variables(v1, v2, fg, multiedges=True):
 
 
 # %% TODO
-def combine_factors(f1, f2, fg):
+def combine_factors(f1, f2, fg, multiedges=True):
+    """Combine the two factors f1 and f2 into f1.
+
+    A broadcasted hadamard product is performed. Note that if multiedges are
+    persisted, and then separately combined, it is much more inefficient than
+    combining them directly in this function as a huge number of wasted
+    multiplications will be computed using the former approach.
+
+    To see why, consider two vectors u and v, and the following computation:
+
+    diag(uv^T)
+
+    This is a diag of an outer product.wIdeally, ee only need to perform n
+    multiplications to get the diagonal elements of the outer product, but if
+    we separate the computation into two steps -- first the outer product
+    followed by the diag indexing, we perform n^2 multiplications, which is
+    much worse.
+
+    Parameters
+    ----------
+    v1, v2 : node keys
+        The factors to combine.
+    fg : MultiDiGraph
+        The factor graph containing the variables.
+    multiedges: bool
+        Whether to persist (True) any resulting multiedges due to factor
+        combination into a single edge, or just combine them (False). Default
+        is to persist them (True). In the case of combining, the indexing is
+        efficiently done to prevent wasted multiplications.
+
+    Returns
+    -------
+    MultiDiGraph
+        Copy of the factor graph with factors combined.
+
+    """
     pass
