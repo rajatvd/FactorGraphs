@@ -123,7 +123,7 @@ class Test(Scene):
         from factor_graph import factor_graph, combine_multiedges, compute_sum
         np.random.seed()
 
-        A = np.random.randn(30, 30)
+        A = np.random.randn(30, 30, 30, 30)
         B = np.random.randn(30, 30)
         C = np.random.randn(30, 30)
         D = np.random.randn(10, 10, 10)
@@ -146,11 +146,14 @@ class Test(Scene):
             'n': (1, 2),
         }
 
-        fg = factor_graph(factors, 'ij,kl,mn -> ijklmn')
+        fg = factor_graph(factors, 'ijjj,kl,mn -> ijklmn')
         for node, pos in pre_pos.items():
             fg.nodes[node]['pos'] = pos
 
         fg.edges['A', 'i', 0]['points'] = [(-3, -2)]
+        fg.edges['A', 'j', 0]['points'] = [(-3, -1.5)]
+        fg.edges['A', 'j', 1]['points'] = [(-3, -1.25)]
+        fg.edges['A', 'j', 2]['points'] = [(-3, -1)]
 
         mfg1 = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
         self.play(ShowCreation(mfg1))
@@ -190,7 +193,5 @@ class Test(Scene):
 
         fg = compute_sum('j', fg)
         self.play(*transform_graph(mfg1, fg))
-
-        print(fg.nodes['A']['factor'], np.trace(A))
 
         self.wait(2)
