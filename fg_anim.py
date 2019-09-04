@@ -168,7 +168,8 @@ def transform_graph(mng, G):
         if len(contracts_to) == 0:
             anims.append(FadeOut(mobj))
         else:
-            anims.append(Transform(mobj, VGroup(*contracts_to)))
+            anims.append(Succession(Transform(mobj, VGroup(*contracts_to)),
+                                    FadeOut(mobj)))
 
         mng.remove(mobj)
         del mng.nodes[mob_id]
@@ -191,7 +192,8 @@ def transform_graph(mng, G):
         if len(contracts_to) == 0:
             anims.append(FadeOut(mobj))
         else:
-            anims.append(Transform(mobj, VGroup(*contracts_to)))
+            anims.append(Succession(Transform(mobj, VGroup(*contracts_to)),
+                                    FadeOut(mobj)))
 
         mng.remove(mobj)
         del mng.edges[mob_id]
