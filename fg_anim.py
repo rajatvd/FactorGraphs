@@ -112,6 +112,7 @@ def get_fg_edge_curve(ed, G):
     return edge
 
 
+# TODO: move this to manimnx package
 # %% TODO: take in custom transform for edges and nodes
 def transform_graph(mng, G):
     """Transforms the graph in ManimGraph mng to the graph G.
