@@ -196,3 +196,40 @@ def compute_sum(v, fg):
 
     return new_fg
 # %%
+
+
+def combine_variables(v1, v2, fg, multiedges=True):
+    """Combine the two variables v1 and v2 into v1.
+
+    No computation is actually performed, unless combine_multiedges
+    is set to true.
+
+    Parameters
+    ----------
+    v1, v2 : node keys
+        The variables to combine.
+    fg : MultiDiGraph
+        The factor graph containing the variables.
+    multiedges: bool
+        Whether to persist (True) any resulting multiedges due to variable
+        combination into a single edge, or just combine them (False). Default
+        is to persist them (True).
+
+    Returns
+    -------
+    MultiDiGraph
+        Copy of the factor graph with variables combined.
+
+    """
+    new_fg = nx.contracted_nodes(fg, v1, v2)
+    new_fg2 = new_fg.copy()
+    if not multiedges:
+        for f in new_fg.predecessors(v1):
+            new_fg2 = combine_multiedges(f, v1, new_fg2)
+
+    return new_fg2
+
+
+# %%
+def combine_factors(f1, f2, fg):
+    pass

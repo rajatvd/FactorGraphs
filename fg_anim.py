@@ -120,7 +120,8 @@ class Test(Scene):
     def construct(self):
         import sys
         sys.path.append('.')
-        from factor_graph import factor_graph, combine_multiedges, compute_sum
+        from factor_graph import factor_graph, combine_multiedges, \
+            compute_sum, combine_variables
         np.random.seed()
 
         A = np.random.randn(30, 30, 30, 30)
@@ -174,7 +175,7 @@ class Test(Scene):
         fg.remove_node('E')
         self.play(*transform_graph(mfg1, fg))
 
-        fg = nx.contracted_nodes(fg, 'j', 'i')
+        # fg = nx.contracted_nodes(fg, 'j', 'i')
         fg.remove_node('B')
         self.play(*transform_graph(mfg1, fg))
 
@@ -185,7 +186,7 @@ class Test(Scene):
         fg.nodes['C']['pos'] = (0, 0)
         self.play(*transform_graph(mfg1, fg))
 
-        fg = combine_multiedges('A', 'j', fg)
+        fg = combine_variables('j', 'i', fg, multiedges=False)
         self.play(*transform_graph(mfg1, fg))
 
         fg.nodes['j']['summed'] = True
