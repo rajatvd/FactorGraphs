@@ -3,9 +3,8 @@ import numpy as np
 import networkx as nx
 import string
 
-# %% TODO doc this
 
-
+# %%
 def factor_graph(factors, einpath):
     """Create a factor graph as a networkx MultiDiGraph.
 
@@ -64,9 +63,8 @@ def map_axes(f, new_axes, fg):
         old_axis = fg.edges[edge]['axis']
         fg.edges[edge]['axis'] = new_axes.index(old_axis)
 
-# %% TODO: fill up these stubs and add more for basic computations
 
-
+# %%
 def combine_multiedges(f, v, fg, remove_points=True):
     """Combine all multiedges between the factor f and variable v.
 
@@ -230,6 +228,6 @@ def combine_variables(v1, v2, fg, multiedges=True):
     return new_fg2
 
 
-# %%
+# %% TODO
 def combine_factors(f1, f2, fg):
     pass
