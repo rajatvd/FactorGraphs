@@ -22,7 +22,7 @@ def factor_graph(factors, einpath):
         Dict mapping factor name to the numpy array containing the factor data.
     einpath : str
         A valid einstein summation which describes the relations between factors
-        and implicitly defines variables as well. This is used to build the 
+        and implicitly defines variables as well. This is used to build the
         graph.
 
     Returns
@@ -58,15 +58,29 @@ def factor_graph(factors, einpath):
     return fg
 
 
+# %%
+def map_axes(f, new_axes, fg):
+    for edge in fg.edges(f, keys=True):
+        old_axis = fg.edges[edge]['axis']
+        fg.edges[edge]['axis'] = new_axes.index(old_axis)
+
 # %% TODO: fill up these stubs and add more for basic computations
 
-def combine_multiedges(f, v, fg):
+
+def combine_multiedges(f, v, fg, remove_points=True):
     """Combine all multiedges between the factor f and variable v.
 
     fg should be a valid factor graph (which is a MultiDiGraph).
 
     Performs a diag-style indexing of the factor f along all axes
     which have an edge to variable v.
+
+    Removes all multiedges except the one with smallest axis.
+
+    Parameters
+    ----------
+    remove_points: bool
+        Whether to remove any points in the resulting combined edge.
 
     Returns
     -------
@@ -75,11 +89,75 @@ def combine_multiedges(f, v, fg):
         performed.
 
     """
+    new_fg = fg.copy()
 
-    pass
+    edges = fg[f][v]
+    factor = fg.nodes[f]['factor']
+
+    # find which axes correspond to the multiedges between f and v
+    axes_to_remove = []
+    for edge in list(edges.values()):
+        axes_to_remove.append(edge['axis'])
+
+    # remove all but the lowest axis, and find where the remaining axes end up
+    axes = list(range(factor.ndim))
+    [axes.remove(x) for x in axes_to_remove[1:]]
+
+    # actually perform the diag computation using einsum
+    # source is the left part of the einpath
+    source = list(string.ascii_lowercase[:factor.ndim])
+    for i in axes_to_remove:
+        source[i] = 'z'
+
+    # target is the right part of the einpath
+    target = []
+    for c in source:
+        if c not in target:
+            target.append(c)
+
+    # compute and update factor in new copy
+    einpath = ''.join(source) + '->' + ''.join(target)
+    new_factor = np.einsum(einpath, factor)
+    new_fg.nodes[f]['factor'] = new_factor
+
+    # remove all edges except the lowest axis one in the new copy
+    keys_to_remove = []
+    for key, data in edges.items():
+        if data['axis'] != axes_to_remove[0]:
+            keys_to_remove.append(key)
+            new_fg.remove_edge(f, v, key)
+        else:
+            key_left = key
+
+    new_fg.edges[f, v, key_left]['contraction'] = {(f, v, i): fg.edges[f, v, i]
+                                                   for i in keys_to_remove}
+
+    # update axes
+    map_axes(f, axes, new_fg)
+
+    if remove_points:
+        new_fg.edges[f, v, key_left].pop('points', None)
+
+    return new_fg
 
 
+# # %%
+# factors = {
+#     'A': np.random.randn(2, 10, 20, 10, 10, 3)
+# }
+# einpath = 'ijkjjl->ijkl'
+# fg = factor_graph(factors, einpath)
+# fg.edges['A', 'j', 0]['points'] = [(1, 1)]
+# expected = np.einsum(einpath, factors['A'])
+# expected.shape
+# # %%
+# f, v = 'A', 'j'
+# newfg = combine_multiedges('A', 'j', fg)
+# newfg['A'], fg['A']
+#
 # %%
+
+
 def compute_sum(v, fg):
     """Compute the sum of a variable v already marked to be summed.
 
