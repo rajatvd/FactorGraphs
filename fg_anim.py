@@ -277,7 +277,7 @@ class Test(Scene):
     def construct(self):
         import sys
         sys.path.append('.')
-        from factor_graph import factor_graph, combine_multiedges
+        from factor_graph import factor_graph, combine_multiedges, compute_sum
         np.random.seed()
 
         A = np.random.randn(30, 30)
@@ -303,42 +303,51 @@ class Test(Scene):
             'n': (1, 2),
         }
 
-        a1 = factor_graph(factors, 'ij,kl,mn -> ijklmn')
+        fg = factor_graph(factors, 'ij,kl,mn -> ijklmn')
         for node, pos in pre_pos.items():
-            a1.nodes[node]['pos'] = pos
+            fg.nodes[node]['pos'] = pos
 
-        a1.edges['A', 'i', 0]['points'] = [(-3, -2)]
+        fg.edges['A', 'i', 0]['points'] = [(-3, -2)]
 
-        mfg1 = mnx.ManimGraph(a1, get_fg_node, get_fg_edge_curve)
+        mfg1 = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
         self.play(ShowCreation(mfg1))
 
-        a2 = a1.copy()
-        a2.add_node('D', type='factor', factor=C, pos=(0, 0), expansion={
-                    'A': a1.nodes['A'], ('A', 'i', 0): a1.edges[('A', 'i', 0)]})
-        a2.add_node('E', type='factor', factor=C, pos=(0, 1))
-        self.play(*transform_graph(mfg1, a2))
+        fg = fg.copy()
+        fg.add_node('D', type='factor', factor=C, pos=(0, 0), expansion={
+                    'A': fg.nodes['A'], ('A', 'i', 0): fg.edges[('A', 'i', 0)]})
+        fg.add_node('E', type='factor', factor=C, pos=(0, 1))
+        self.play(*transform_graph(mfg1, fg))
 
-        a3 = a2.copy()
-        a3.add_node('f', type='variable', pos=(4, 1), summed='False')
-        a3.add_edge('D', 'f', size=100)
-        self.play(*transform_graph(mfg1, a3))
+        fg = fg.copy()
+        fg.add_node('f', type='variable', pos=(4, 1), summed='False')
+        fg.add_edge('D', 'f', size=100)
+        self.play(*transform_graph(mfg1, fg))
 
-        a4 = a3.copy()
-        a4.nodes['D']['pos'] = (5, 3)
-        a4.remove_node('E')
-        self.play(*transform_graph(mfg1, a4))
+        fg = fg.copy()
+        fg.nodes['D']['pos'] = (5, 3)
+        fg.remove_node('E')
+        self.play(*transform_graph(mfg1, fg))
 
-        a5 = nx.contracted_nodes(a4, 'j', 'i')
-        a5.remove_node('B')
-        self.play(*transform_graph(mfg1, a5))
+        fg = nx.contracted_nodes(fg, 'j', 'i')
+        fg.remove_node('B')
+        self.play(*transform_graph(mfg1, fg))
 
-        a6 = nx.contracted_nodes(a5, 'C', 'D')
-        self.play(*transform_graph(mfg1, a6))
+        fg = nx.contracted_nodes(fg, 'C', 'D')
+        self.play(*transform_graph(mfg1, fg))
 
-        a7 = a6.copy()
-        a7.nodes['C']['pos'] = (0, 0)
-        self.play(*transform_graph(mfg1, a7))
+        fg = fg.copy()
+        fg.nodes['C']['pos'] = (0, 0)
+        self.play(*transform_graph(mfg1, fg))
 
-        a8 = combine_multiedges('A', 'j', a7)
-        self.play(*transform_graph(mfg1, a8))
+        fg = combine_multiedges('A', 'j', fg)
+        self.play(*transform_graph(mfg1, fg))
+
+        fg.nodes['j']['summed'] = True
+        self.play(*transform_graph(mfg1, fg))
+
+        fg = compute_sum('j', fg)
+        self.play(*transform_graph(mfg1, fg))
+
+        print(fg.nodes['A']['factor'], np.trace(A))
+
         self.wait(2)
