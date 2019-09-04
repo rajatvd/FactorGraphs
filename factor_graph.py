@@ -145,17 +145,17 @@ def combine_multiedges(f, v, fg, remove_points=True):
 # factors = {
 #     'A': np.random.randn(2, 10, 20, 10, 10, 3)
 # }
-# einpath = 'ijkjjl->ijkl'
+# einpath = 'ijkjjl->ikj'
 # fg = factor_graph(factors, einpath)
 # fg.edges['A', 'j', 0]['points'] = [(1, 1)]
 # expected = np.einsum(einpath, factors['A'])
 # expected.shape
 # # %%
-# f, v = 'A', 'j'
+# f, v = 'B', 'l'
 # newfg = combine_multiedges('A', 'j', fg)
 # newfg['A'], fg['A']
 #
-# %%
+# # %%
 
 
 def compute_sum(v, fg):
@@ -176,6 +176,23 @@ def compute_sum(v, fg):
         appropriately marginalized.
 
     """
-    pass
+    assert fg.nodes[v]['summed'] == True, "variable must be summed to compute"
+    assert fg.degree(v) == 1, "variable must have only one edge"
 
+    new_fg = fg.copy()
+
+    # compute the sum
+    f = list(fg.predecessors(v))[0]
+    old_factor = fg.nodes[f]['factor']
+    axis = list(fg[f][v].values())[0]['axis']
+    new_factor = old_factor.sum(axis=axis)
+
+    # calculate cost of this summation
+    m, n = old_factor.reshape(-1, old_factor.shape[axis]).shape
+    additions = m*(n-1)
+
+    new_fg.remove_node(v)
+    new_fg.nodes[f]['factor'] = new_factor
+
+    return new_fg
 # %%
