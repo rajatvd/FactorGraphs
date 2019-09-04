@@ -96,6 +96,8 @@ def transform_graph(mng, G):
     old_ids = list(mng.nodes.keys()) + list(mng.edges.keys())
     new_ids = []
 
+    # just copying the loops for edges and nodes, not worth functioning that
+    # i think
     # ------- ADDITIONS AND DIRECT TRANSFORMS ---------
     # NODES
     for node, node_data in G.nodes.items():
