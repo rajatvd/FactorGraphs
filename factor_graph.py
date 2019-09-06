@@ -58,13 +58,104 @@ def factor_graph(factors, einpath):
 
 
 # %%
-def map_axes(f, new_axes, fg):
+def map_axes(f, old_axes, fg):
+    """Reassign the axis attribute of edges from the factor f.
+
+    Parameters
+    ----------
+    f : node key
+        The factor to change axes of.
+    old_axes : list
+        old_axis[i] has the old axis attribute of the edge which will be
+        assigned axis i.
+    fg : MultiDiGraph
+        The factor graph.
+
+    Returns
+    -------
+    None
+
+    """
+    assert fg.nodes[f]['type'] == 'factor', "Can't map axes of variable node"
     for edge in fg.edges(f, keys=True):
         old_axis = fg.edges[edge]['axis']
-        fg.edges[edge]['axis'] = new_axes.index(old_axis)
+        fg.edges[edge]['axis'] = old_axes.index(old_axis)
 
+
+# %% TODO: option to combine multiedges between only some variables
+def kill_multiedges_reaxis(f, fg):
+    """Combine all multiedges between f and its neighbor variables.
+
+    DOES NOT PERFORM COMPUTATION. This is a helper function and should only be
+    used in other functions which perform the appropriate computation.
+
+    No indexing is performed on the factor of f. This purely deals with the
+    edges in the factor graph and the axis attributes of the corresponding
+    edges.
+
+    The combination of edges in the graph is separate from the actual
+    computation because actual products which might result in multiedges do not
+    separately perform an indexing as that is extremely inefficient.
+    (See combine_factors for an example.)
+
+    Parameters
+    ----------
+    f : node key
+        The factor.
+    fg : MultiDiGraph
+        The factor graph.
+
+    Returns
+    -------
+    MultiDiGraph
+        Copy of the factor graph with multiedges killed.
+
+    """
+    new_fg = fg.copy()
+
+    indices = [0]*fg.degree(f)
+
+    for edge in fg.edges(f, keys=True):
+        indices[fg.edges[edge]['axis']] = edge[1]
+
+    assert 0 not in indices, "Axes of the factor are not valid, the factor \
+    graph is invalid"
+
+    new_axes = {}  # the new axis of each variable
+    keep_axes = {}  # the axis of the edge to keep for each variable
+    keep_keys = {}  # the edge key for the edge to keep for each variable
+    c = 0
+    for i, ind in enumerate(indices):
+        if ind not in new_axes.keys():
+            new_axes[ind] = c
+            keep_axes[ind] = i
+            keep_keys[ind] = [edge for edge in fg.edges(f, keys=True)
+                              if fg.edges[edge]['axis'] == i][0][2]
+            c += 1
+
+    for edge in fg.edges(f, keys=True):
+        # remove edges if their axes isnt one that should be kept
+        if fg.edges[edge]['axis'] not in keep_axes.values():
+            ind = edge[1]
+            edge_data = fg.edges[edge]
+            keep_edge_data = new_fg.edges[f, ind, keep_keys[ind]]
+            if 'contraction' not in keep_edge_data:
+                keep_edge_data['contraction'] = {}
+            keep_edge_data['contraction'][edge] = edge_data
+            new_fg.remove_edge(*edge)
+
+    # reassign new axes
+    for edge in new_fg.edges(f, keys=True):
+        new_fg.edges[edge]['axis'] = new_axes[edge[1]]
+
+    # new_fg.edges(data='contraction')
+    # new_fg.edges(data='axis')
+
+    return new_fg
 
 # %%
+
+
 def combine_multiedges(f, v, fg, remove_points=True):
     """Combine all multiedges between the factor f and variable v.
 
@@ -139,12 +230,13 @@ def combine_multiedges(f, v, fg, remove_points=True):
     return new_fg
 
 
-# # %%
-# factors = {
-#     'A': np.random.randn(2, 10, 20, 10, 10, 3)
-# }
-# einpath = 'ijkjjl->ikj'
-# fg = factor_graph(factors, einpath)
+# %%
+factors = {
+    'A': np.random.randn(20, 10, 20, 10, 10, 3)
+}
+einpath = 'ijijjk->ikj'
+fg = factor_graph(factors, einpath)
+f = 'A'
 # fg.edges['A', 'j', 0]['points'] = [(1, 1)]
 # expected = np.einsum(einpath, factors['A'])
 # expected.shape
@@ -241,7 +333,7 @@ def combine_factors(f1, f2, fg, multiedges=True):
 
     diag(uv^T)
 
-    This is a diag of an outer product.wIdeally, ee only need to perform n
+    This is a diag of an outer product. Ideally, we only need to perform n
     multiplications to get the diagonal elements of the outer product, but if
     we separate the computation into two steps -- first the outer product
     followed by the diag indexing, we perform n^2 multiplications, which is
@@ -249,15 +341,16 @@ def combine_factors(f1, f2, fg, multiedges=True):
 
     Parameters
     ----------
-    v1, v2 : node keys
+    f1, f2 : node keys
         The factors to combine.
     fg : MultiDiGraph
         The factor graph containing the variables.
     multiedges: bool
-        Whether to persist (True) any resulting multiedges due to factor
-        combination into a single edge, or just combine them (False). Default
-        is to persist them (True). In the case of combining, the indexing is
-        efficiently done to prevent wasted multiplications.
+        Whether to persist (True) any multiedges after factor combination, or
+        just combine them (False). Default is to persist them (True). In the
+        case of combining, the indexing is efficiently done to prevent wasted
+        multiplications. Note that any multiedges which previously existed
+        are also removed.
 
     Returns
     -------
@@ -265,4 +358,6 @@ def combine_factors(f1, f2, fg, multiedges=True):
         Copy of the factor graph with factors combined.
 
     """
-    pass
+    new_fg = nx.contracted_nodes(fg, f1, f2)
+
+    return new_fg
