@@ -115,6 +115,8 @@ def kill_multiedges_reaxis(f, v, fg):
     """
     new_fg = fg.copy()
     edges = fg[f][v]
+    if len(edges) == 1:
+        return new_fg
     factor = fg.nodes[f]['factor']
 
     # find which axes correspond to the multiedges between f and v
@@ -144,8 +146,6 @@ def kill_multiedges_reaxis(f, v, fg):
 
 
 # %%
-
-
 def combine_multiedges(f, v, fg, remove_points=True):
     """Combine all multiedges between the factor f and variable v.
 
@@ -201,16 +201,23 @@ def combine_multiedges(f, v, fg, remove_points=True):
     return new_fg
 
 
-# %%
-factors = {
-    'A': np.random.randn(20, 10, 20, 10, 10, 3)
-}
-einpath = 'ijijjk->ikj'
-fg = factor_graph(factors, einpath)
-f = 'A'
-# fg.edges['A', 'j', 0]['points'] = [(1, 1)]
-# expected = np.einsum(einpath, factors['A'])
-# expected.shape
+# # %%
+# A = np.random.randn(20, 10, 20, 10, 10, 3)
+# B = np.random.randn(10, 3, 20)
+# factors = {
+#     'A': A,
+#     'B': B
+# }
+# einpath = 'ijijjk,jki -> ijk'
+# fg = factor_graph(factors, einpath)
+# f1 = 'A'
+# f2 = 'B'
+# # fg.edges['A', 'j', 0]['points'] = [(1, 1)]
+# # expected = np.einsum(einpath, factors['A'])
+# # expected.shape
+# # %%
+# c = np.einsum('ijijjk,jki -> ijk', A, B)
+# c.shape
 # # %%
 # f, v = 'B', 'l'
 # newfg = combine_multiedges('A', 'j', fg)
@@ -219,6 +226,7 @@ f = 'A'
 # # %%
 
 
+# %%
 def compute_sum(v, fg):
     """Compute the sum of a variable v already marked to be summed.
 
@@ -256,9 +264,9 @@ def compute_sum(v, fg):
     new_fg.nodes[f]['factor'] = new_factor
 
     return new_fg
+
+
 # %%
-
-
 def combine_variables(v1, v2, fg, multiedges=True):
     """Combine the two variables v1 and v2 into v1.
 
@@ -291,7 +299,7 @@ def combine_variables(v1, v2, fg, multiedges=True):
     return new_fg2
 
 
-# %% TODO
+# %%
 def combine_factors(f1, f2, fg, multiedges=True):
     """Combine the two factors f1 and f2 into f1.
 
@@ -329,6 +337,52 @@ def combine_factors(f1, f2, fg, multiedges=True):
         Copy of the factor graph with factors combined.
 
     """
-    new_fg = nx.contracted_nodes(fg, f1, f2)
+    new_fg = fg.copy()
 
-    return new_fg
+    a = fg.nodes[f1]['factor']
+    b = fg.nodes[f2]['factor']
+
+    axis_increase = a.ndim  # ndim of f1's factor
+    for edge in new_fg.edges(f2, keys=True):
+        new_fg.edges[edge]['axis'] += axis_increase
+
+    new_fg = nx.contracted_nodes(new_fg, f1, f2)
+
+    if multiedges:
+        # compute outer product without any indexing
+        c = a.reshape(*a.shape, *[1 for _ in b.shape]) * b
+        new_fg.nodes[f1]['factor'] = c
+        return new_fg
+    else:
+        indices1 = [0]*fg.degree(f1)
+        for edge in fg.edges(f1, keys=True):
+            indices1[fg.edges[edge]['axis']] = edge[1]
+
+        indices2 = [0]*fg.degree(f2)
+        for edge in fg.edges(f2, keys=True):
+            indices2[fg.edges[edge]['axis']] = edge[1]
+
+        assert 0 not in indices1+indices2, "Axes of the factors are not valid,\
+        the factor graph is invalid"
+
+        target = []
+        for ind in indices1+indices2:
+            if ind not in target:
+                target.append(ind)
+
+        # efficiently compute outer product with indexing
+        einpath = ''.join(indices1)+','+''.join(indices2)+'->'+''.join(target)
+        c = np.einsum(einpath, a, b)
+
+        # need a factor with the full ndim for kill_multiedges_reaxis to work
+        new_fg.nodes[f1]['factor'] = a.reshape(*a.shape, *[1 for _ in b.shape])
+
+        # combine the multiedges in the graph appropriately
+        new_fg2 = new_fg.copy()
+        for v in new_fg.successors(f1):
+            new_fg2 = kill_multiedges_reaxis(f1, v, new_fg2)
+
+        # assign real factor in the end
+        new_fg2.nodes[f1]['factor'] = c
+
+        return new_fg2

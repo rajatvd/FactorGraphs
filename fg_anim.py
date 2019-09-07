@@ -155,6 +155,7 @@ class Test(Scene):
         fg.edges['A', 'j', 0]['points'] = [(-3, -1.5)]
         fg.edges['A', 'j', 1]['points'] = [(-3, -1.25)]
         fg.edges['A', 'j', 2]['points'] = [(-3, -1)]
+        fg.edges['B', 'l', 0]['points'] = [(1, 0)]
 
         mfg1 = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
         self.play(ShowCreation(mfg1))
@@ -176,10 +177,12 @@ class Test(Scene):
         self.play(*transform_graph(mfg1, fg))
 
         # fg = nx.contracted_nodes(fg, 'j', 'i')
-        fg.remove_node('B')
+        # fg.remove_node('B')
+        # self.play(*transform_graph(mfg1, fg))
+        fg = combine_variables('n', 'l', fg)
         self.play(*transform_graph(mfg1, fg))
 
-        fg = nx.contracted_nodes(fg, 'C', 'D')
+        fg = combine_factors('C', 'B', fg, multiedges=True)
         self.play(*transform_graph(mfg1, fg))
 
         fg = fg.copy()
@@ -197,5 +200,12 @@ class Test(Scene):
 
         fg = compute_sum('j', fg)
         self.play(*transform_graph(mfg1, fg))
+
+        print(fg.nodes['C']['factor'].shape)
+
+        fg = combine_multiedges('C', 'n', fg)
+        self.play(*transform_graph(mfg1, fg))
+
+        print(fg.nodes['C']['factor'].shape)
 
         self.wait(2)
