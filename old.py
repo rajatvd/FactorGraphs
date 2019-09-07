@@ -3,6 +3,78 @@ from manimlib.imports import *
 import numpy as np
 import networkx as nx
 
+
+# %%
+def kill_multiedges_reaxis_all(f, fg):
+    """Combine all multiedges between f and its neighbor variables.
+
+    DOES NOT PERFORM COMPUTATION. This is a helper function and should only be
+    used in other functions which perform the appropriate computation.
+
+    No indexing is performed on the factor of f. This purely deals with the
+    edges in the factor graph and the axis attributes of the corresponding
+    edges.
+
+    The combination of edges in the graph is separate from the actual
+    computation because actual products which might result in multiedges do not
+    separately perform an indexing as that is extremely inefficient.
+    (See combine_factors for an example.)
+
+    Parameters
+    ----------
+    f : node key
+        The factor.
+    fg : MultiDiGraph
+        The factor graph.
+
+    Returns
+    -------
+    MultiDiGraph
+        Copy of the factor graph with multiedges killed.
+
+    """
+    new_fg = fg.copy()
+
+    indices = [0]*fg.degree(f)
+    for edge in fg.edges(f, keys=True):
+        indices[fg.edges[edge]['axis']] = edge[1]
+
+    assert 0 not in indices, "Axes of the factor are not valid, the factor \
+    graph is invalid"
+
+    new_axes = {}  # the new axis of each variable
+    keep_axes = {}  # the axis of the edge to keep for each variable
+    keep_keys = {}  # the edge key for the edge to keep for each variable
+    c = 0
+    for i, ind in enumerate(indices):
+        if ind not in new_axes.keys():
+            new_axes[ind] = c
+            keep_axes[ind] = i
+            keep_keys[ind] = [edge for edge in fg.edges(f, keys=True)
+                              if fg.edges[edge]['axis'] == i][0][2]
+            c += 1
+
+    for edge in fg.edges(f, keys=True):
+        # remove edges if their axes isnt one that should be kept
+        if fg.edges[edge]['axis'] not in keep_axes.values():
+            ind = edge[1]
+            edge_data = fg.edges[edge]
+            keep_edge_data = new_fg.edges[f, ind, keep_keys[ind]]
+            if 'contraction' not in keep_edge_data:
+                keep_edge_data['contraction'] = {}
+            keep_edge_data['contraction'][edge] = edge_data
+            new_fg.remove_edge(*edge)
+
+    # reassign new axes
+    for edge in new_fg.edges(f, keys=True):
+        new_fg.edges[edge]['axis'] = new_axes[edge[1]]
+
+    # new_fg.edges(data='contraction')
+    # new_fg.edges(data='axis')
+
+    return new_fg
+
+
 # %%
 
 

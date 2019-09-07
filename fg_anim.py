@@ -121,7 +121,7 @@ class Test(Scene):
         import sys
         sys.path.append('.')
         from factor_graph import factor_graph, combine_multiedges, \
-            compute_sum, combine_variables
+            compute_sum, combine_variables, combine_factors
         np.random.seed()
 
         A = np.random.randn(30, 30, 30, 30)
@@ -186,10 +186,13 @@ class Test(Scene):
         fg.nodes['C']['pos'] = (0, 0)
         self.play(*transform_graph(mfg1, fg))
 
-        fg = combine_variables('j', 'i', fg, multiedges=False)
+        fg = combine_variables('j', 'i', fg, multiedges=True)
         self.play(*transform_graph(mfg1, fg))
 
         fg.nodes['j']['summed'] = True
+        self.play(*transform_graph(mfg1, fg))
+
+        fg = combine_multiedges('A', 'j', fg)
         self.play(*transform_graph(mfg1, fg))
 
         fg = compute_sum('j', fg)

@@ -82,9 +82,9 @@ def map_axes(f, old_axes, fg):
         fg.edges[edge]['axis'] = old_axes.index(old_axis)
 
 
-# %% TODO: option to combine multiedges between only some variables
-def kill_multiedges_reaxis(f, fg):
-    """Combine all multiedges between f and its neighbor variables.
+# %%
+def kill_multiedges_reaxis(f, v, fg):
+    """Combine all multiedges between f and v in fg.
 
     DOES NOT PERFORM COMPUTATION. This is a helper function and should only be
     used in other functions which perform the appropriate computation.
@@ -102,6 +102,8 @@ def kill_multiedges_reaxis(f, fg):
     ----------
     f : node key
         The factor.
+    v : node key
+        The variable.
     fg : MultiDiGraph
         The factor graph.
 
@@ -112,46 +114,34 @@ def kill_multiedges_reaxis(f, fg):
 
     """
     new_fg = fg.copy()
+    edges = fg[f][v]
+    factor = fg.nodes[f]['factor']
 
-    indices = [0]*fg.degree(f)
+    # find which axes correspond to the multiedges between f and v
+    axes_to_remove = []
+    for edge in list(edges.values()):
+        axes_to_remove.append(edge['axis'])
 
-    for edge in fg.edges(f, keys=True):
-        indices[fg.edges[edge]['axis']] = edge[1]
+    # remove all but the lowest axis, and find where the remaining axes end up
+    axes = list(range(factor.ndim))
+    [axes.remove(x) for x in axes_to_remove[1:]]
 
-    assert 0 not in indices, "Axes of the factor are not valid, the factor \
-    graph is invalid"
+    # remove all edges except the lowest axis one in the new copy
+    keys_to_remove = []
+    for key, data in edges.items():
+        if data['axis'] != axes_to_remove[0]:
+            keys_to_remove.append(key)
+            new_fg.remove_edge(f, v, key)
+        else:
+            key_left = key
 
-    new_axes = {}  # the new axis of each variable
-    keep_axes = {}  # the axis of the edge to keep for each variable
-    keep_keys = {}  # the edge key for the edge to keep for each variable
-    c = 0
-    for i, ind in enumerate(indices):
-        if ind not in new_axes.keys():
-            new_axes[ind] = c
-            keep_axes[ind] = i
-            keep_keys[ind] = [edge for edge in fg.edges(f, keys=True)
-                              if fg.edges[edge]['axis'] == i][0][2]
-            c += 1
+    new_fg.edges[f, v, key_left]['contraction'] = {(f, v, i): fg.edges[f, v, i]
+                                                   for i in keys_to_remove}
 
-    for edge in fg.edges(f, keys=True):
-        # remove edges if their axes isnt one that should be kept
-        if fg.edges[edge]['axis'] not in keep_axes.values():
-            ind = edge[1]
-            edge_data = fg.edges[edge]
-            keep_edge_data = new_fg.edges[f, ind, keep_keys[ind]]
-            if 'contraction' not in keep_edge_data:
-                keep_edge_data['contraction'] = {}
-            keep_edge_data['contraction'][edge] = edge_data
-            new_fg.remove_edge(*edge)
-
-    # reassign new axes
-    for edge in new_fg.edges(f, keys=True):
-        new_fg.edges[edge]['axis'] = new_axes[edge[1]]
-
-    # new_fg.edges(data='contraction')
-    # new_fg.edges(data='axis')
-
+    # update axes
+    map_axes(f, axes, new_fg)
     return new_fg
+
 
 # %%
 
@@ -178,7 +168,7 @@ def combine_multiedges(f, v, fg, remove_points=True):
         performed.
 
     """
-    new_fg = fg.copy()
+    new_fg = kill_multiedges_reaxis(f, v, fg)
 
     edges = fg[f][v]
     factor = fg.nodes[f]['factor']
@@ -187,10 +177,6 @@ def combine_multiedges(f, v, fg, remove_points=True):
     axes_to_remove = []
     for edge in list(edges.values()):
         axes_to_remove.append(edge['axis'])
-
-    # remove all but the lowest axis, and find where the remaining axes end up
-    axes = list(range(factor.ndim))
-    [axes.remove(x) for x in axes_to_remove[1:]]
 
     # actually perform the diag computation using einsum
     # source is the left part of the einpath
@@ -209,23 +195,8 @@ def combine_multiedges(f, v, fg, remove_points=True):
     new_factor = np.einsum(einpath, factor)
     new_fg.nodes[f]['factor'] = new_factor
 
-    # remove all edges except the lowest axis one in the new copy
-    keys_to_remove = []
-    for key, data in edges.items():
-        if data['axis'] != axes_to_remove[0]:
-            keys_to_remove.append(key)
-            new_fg.remove_edge(f, v, key)
-        else:
-            key_left = key
-
-    new_fg.edges[f, v, key_left]['contraction'] = {(f, v, i): fg.edges[f, v, i]
-                                                   for i in keys_to_remove}
-
-    # update axes
-    map_axes(f, axes, new_fg)
-
     if remove_points:
-        new_fg.edges[f, v, key_left].pop('points', None)
+        list(new_fg[f][v].values())[0].pop('points', None)
 
     return new_fg
 
