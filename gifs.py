@@ -45,7 +45,35 @@ class MatVec(Scene):
 # %%
 class MatMul(Scene):
     def construct(self):
-        pass
+
+        A = np.random.randn(30, 60)
+        B = np.random.randn(60, 10)
+        factors = {'A': A, 'B': B}
+        fg = factor_graph(factors, 'ij,kl->ijkl')
+
+        h = 2
+        n = 6
+        pos = np.zeros((n, 2))
+        pos[:, 0] = (np.arange(n)-n/2.0 + 0.5)*h
+        mnx.map_attr('pos', ['i', 'A', 'j', 'k', 'B', 'l'], pos, fg)
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        self.add(mng)
+        self.wait(2)
+
+        fg = combine_variables('j', 'k', fg)
+
+        pos = np.zeros((n-1, 2))
+        pos[:, 0] = (np.arange(n-1)-(n-1)/2.0+0.5)*h
+        mnx.map_attr('pos', ['i', 'A', 'j', 'B', 'l'], pos, fg)
+        self.play(*mnx.transform_graph(mng, fg))
+
+        fg = fg.copy()
+        fg.nodes['j']['summed'] = True
+        self.play(*mnx.transform_graph(mng, fg))
+
+        self.wait(2)
 
 
 # %%
