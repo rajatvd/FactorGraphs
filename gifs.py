@@ -79,8 +79,38 @@ class MatMul(Scene):
 # %%
 class Hadamard(Scene):
     def construct(self):
-        pass
+        A = np.random.randn(10, 60)
+        B = np.random.randn(10, 60)
+        factors = {'A': A, 'B': B}
+        fg = factor_graph(factors, 'ij,kl->ijkl')
 
+        posA = np.zeros((3, 2))
+        posA[:, 0] = -2
+        posA[:, 1] = np.array([2, 0, -2])
+        mnx.map_attr('pos', ['i', 'A', 'j'], posA, fg)
+
+        posB = np.zeros((3, 2))
+        posB[:, 0] = 2
+        posB[:, 1] = np.array([2, 0, -2])
+        mnx.map_attr('pos', ['k', 'B', 'l'], posB, fg)
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        self.add(mng)
+        self.wait(2)
+
+        fg = combine_variables('i', 'k', fg)
+        fg = combine_variables('j', 'l', fg)
+        fg.nodes['i']['pos'] = (0, 2)
+        fg.nodes['j']['pos'] = (0, -2)
+        fg.edges['A', 'i', 0]['points'] = [(-1.5, 1)]
+        fg.edges['A', 'j', 0]['points'] = [(-1.5, -1)]
+        fg.edges['B', 'i', 0]['points'] = [(1.5, 1)]
+        fg.edges['B', 'j', 0]['points'] = [(1.5, -1)]
+
+        self.play(*mnx.transform_graph(mng, fg))
+
+        self.wait(2)
 
 # %%
 class FakeReshape(Scene):
