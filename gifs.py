@@ -3,6 +3,7 @@ from manimnx import manimnx as mnx
 import numpy as np
 import networkx as nx
 import sys
+import sympy.geometry as sp
 sys.path.append('.')
 if True:
     from factor_graph import *
@@ -171,12 +172,112 @@ class ReshapeCombine(Scene):
         self.wait(2)
 
 
+# %%
+class HexTransform(Transform):
+    CONFIG = {
+        "path_arc": -np.pi/1.5,
+    }
 
 
 # %%
 class TraceCyclic(Scene):
     def construct(self):
-        pass
+        A = np.random.randn(30, 60)
+        B = np.random.randn(60, 10)
+        C = np.random.randn(10, 30)
+        factors = {'A': A, 'B': B, 'C': C}
+        fg = factor_graph(factors, 'ij,kl,mn->ijklmn')
+
+        h = 1.5
+        n = 9
+        pos = np.zeros((n, 2))
+        pos[:, 1] = 1
+        pos[:, 0] = (np.arange(n)-n/2.0 + 0.5)*h
+        mnx.map_attr('pos', ['i', 'A', 'j', 'k', 'B', 'l', 'm', 'C', 'n'], pos, fg)
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        self.add(mng)
+        self.wait(2)
+
+        fg = combine_variables('j', 'k', fg)
+        mnx.shift_nodes(['A', 'i', 'j'], np.array([h, 0]), fg)
+        self.play(*mnx.transform_graph(mng, fg))
+
+        fg = fg.copy()
+        fg.nodes['j']['summed'] = True
+        self.play(*mnx.transform_graph(mng, fg))
+
+        fg = combine_variables('m', 'l', fg)
+        mnx.shift_nodes(['C', 'm', 'n'], np.array([-h, 0]), fg)
+        self.play(*mnx.transform_graph(mng, fg))
+
+        fg = fg.copy()
+        fg.nodes['m']['summed'] = True
+        self.play(*mnx.transform_graph(mng, fg))
+
+        fg = combine_variables('i', 'n', fg)
+        fg.nodes['i']['pos'] = (0, -1)
+        fg.edges['A', 'i', 0]['points'] = [(pos[0][0], 0.7),
+                                           (pos[0][0], -0.6)]
+        fg.edges['C', 'i', 0]['points'] = [(pos[-1][0], 0.7),
+                                           (pos[-1][0], -0.6)]
+        self.play(*mnx.transform_graph(mng, fg))
+
+        print(fg.edges['A', 'i', 0]['points'],
+              fg.edges['C', 'i', 0]['points'],
+              fg.nodes['A']['pos'],
+              fg.nodes['C']['pos'],)
+
+        fg = fg.copy()
+        fg.nodes['i']['summed'] = True
+        self.play(*mnx.transform_graph(mng, fg))
+
+        nodes = ['m', 'B', 'j', 'A', 'i', 'C']
+        edges = [
+            ('B', 'm', 0),
+            ('B', 'j', 0),
+            ('A', 'j', 0),
+            ('A', 'i', 0),
+            ('C', 'i', 0),
+            ('C', 'm', 0),
+        ]
+
+        hex = sp.RegularPolygon(sp.Point2D(0, -1), r=2.5, n=12)
+        poses = [np.array(p.evalf()).astype(np.float64) for p in hex.vertices]
+
+        mnx.map_attr('pos', nodes, poses[::2], fg)
+        mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
+        self.play(*mnx.transform_graph(mng, fg))
+        self.wait(2)
+
+        def rotate(l, n):
+            return l[-n:] + l[:-n]
+
+        poses = rotate(poses, 4)
+        mnx.map_attr('pos', nodes, poses[::2], fg)
+        mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
+        self.play(*mnx.transform_graph(mng, fg,
+                                       node_transform=HexTransform,
+                                       edge_transform=HexTransform,))
+        self.wait(2)
+
+        poses = rotate(poses, 4)
+        mnx.map_attr('pos', nodes, poses[::2], fg)
+        mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
+        self.play(*mnx.transform_graph(mng, fg,
+                                       node_transform=HexTransform,
+                                       edge_transform=HexTransform,))
+        self.wait(2)
+
+        poses = rotate(poses, 4)
+        mnx.map_attr('pos', nodes, poses[::2], fg)
+        mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
+        self.play(*mnx.transform_graph(mng, fg,
+                                       node_transform=HexTransform,
+                                       edge_transform=HexTransform,))
+
+        self.wait(2)
 
 
 # %%
