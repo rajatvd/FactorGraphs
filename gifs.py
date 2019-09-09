@@ -173,6 +173,44 @@ class ReshapeCombine(Scene):
 
 
 # %%
+class Trace(Scene):
+    def construct(self):
+        A = np.random.randn(30, 30)
+        factors = {'A': A}
+        fg = factor_graph(factors, 'ij->ij')
+        fg.nodes['A']['pos'] = (0, 0)
+        fg.nodes['i']['pos'] = (0, 2)
+        fg.nodes['j']['pos'] = (0, -2)
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        self.add(mng)
+        self.wait(2)
+
+        fg = combine_variables('i', 'j', fg)
+        fg.nodes['A']['pos'] = (-1, 0)
+        fg.nodes['i']['pos'] = (1, 0)
+        fg.edges['A', 'i', 0]['points'] = [(0, 1)]
+        fg.edges['A', 'i', 1]['points'] = [(0, -1)]
+
+        self.play(*mnx.transform_graph(mng, fg))
+        self.wait(1)
+
+        eq1 = TexMobject(r"\text{diag}(A)", color=BLACK)
+        eq2 = TexMobject(r"\text{tr}(A)", color=BLACK)
+        eq1.move_to(2*UP)
+        eq2.move_to(2*UP)
+
+        self.play(FadeIn(eq1))
+        self.wait(1)
+
+        fg.nodes['i']['summed'] = True
+        self.play(*mnx.transform_graph(mng, fg), Transform(eq1, eq2))
+
+        self.wait(4)
+
+
+# %%
 class HexTransform(Transform):
     CONFIG = {
         "path_arc": -np.pi/1.5,
@@ -188,6 +226,22 @@ class TraceCyclic(Scene):
         factors = {'A': A, 'B': B, 'C': C}
         fg = factor_graph(factors, 'ij,kl,mn->ijklmn')
 
+        tA = TexMobject('A', color=BLACK)
+        tC = TexMobject('C', color=BLACK)
+
+        eq = TexMobject(r"\text{tr}(", 'A', 'B', 'C', ')', color=BLACK)
+        eq.to_edge(UP)
+        dfact = 0.6
+        eq.shift(dfact*DOWN)
+        tB = eq.submobjects[2]
+        tA.to_edge(UP)
+        tA.shift(4.5*LEFT+dfact*DOWN)
+
+        tC.to_edge(UP)
+        tC.shift(4.5*RIGHT+dfact*DOWN)
+
+        self.add(tA, tB, tC)
+
         h = 1.5
         n = 9
         pos = np.zeros((n, 2))
@@ -197,24 +251,31 @@ class TraceCyclic(Scene):
 
         mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
 
+        delta = tB.get_center()[0] - fg.nodes['B']['pos'][0]
+        eq.shift(delta*LEFT)
+
         self.add(mng)
         self.wait(2)
 
         fg = combine_variables('j', 'k', fg)
         mnx.shift_nodes(['A', 'i', 'j'], np.array([h, 0]), fg)
-        self.play(*mnx.transform_graph(mng, fg))
+        self.play(*mnx.transform_graph(mng, fg),
+                  ReplacementTransform(tA, eq.submobjects[1]))
 
         fg = fg.copy()
         fg.nodes['j']['summed'] = True
         self.play(*mnx.transform_graph(mng, fg))
+        self.wait(1)
 
         fg = combine_variables('m', 'l', fg)
         mnx.shift_nodes(['C', 'm', 'n'], np.array([-h, 0]), fg)
-        self.play(*mnx.transform_graph(mng, fg))
+        self.play(*mnx.transform_graph(mng, fg),
+                  ReplacementTransform(tC, eq.submobjects[3]))
 
         fg = fg.copy()
         fg.nodes['m']['summed'] = True
         self.play(*mnx.transform_graph(mng, fg))
+        self.wait(1)
 
         fg = combine_variables('i', 'n', fg)
         fg.nodes['i']['pos'] = (0, -1)
@@ -231,7 +292,18 @@ class TraceCyclic(Scene):
 
         fg = fg.copy()
         fg.nodes['i']['summed'] = True
-        self.play(*mnx.transform_graph(mng, fg))
+        self.play(*mnx.transform_graph(mng, fg),
+                  FadeIn(eq.submobjects[0]), FadeIn(eq.submobjects[-1]))
+        self.wait(1)
+
+        eq2 = TexMobject(r"\text{tr}(ABC)", r"= \text{tr}(CAB)", color=BLACK)
+        eq2.to_edge(UP)
+        eq2.shift(dfact*DOWN)
+
+        eq3 = TexMobject(r"\text{tr}(ABC) = \text{tr}(CAB)",
+                         r"= \text{tr}(BCA)", color=BLACK)
+        eq3.to_edge(UP)
+        eq3.shift(dfact*DOWN)
 
         nodes = ['m', 'B', 'j', 'A', 'i', 'C']
         edges = [
@@ -260,7 +332,12 @@ class TraceCyclic(Scene):
         self.play(*mnx.transform_graph(mng, fg,
                                        node_transform=HexTransform,
                                        edge_transform=HexTransform,))
-        self.wait(2)
+
+        self.play(ApplyMethod(eq.move_to, eq2.submobjects[0].get_center()),
+                  FadeIn(eq2.submobjects[1]))
+        self.add(eq2.submobjects[0])
+        self.remove(eq)
+        self.wait(1)
 
         poses = rotate(poses, 4)
         mnx.map_attr('pos', nodes, poses[::2], fg)
@@ -268,16 +345,10 @@ class TraceCyclic(Scene):
         self.play(*mnx.transform_graph(mng, fg,
                                        node_transform=HexTransform,
                                        edge_transform=HexTransform,))
-        self.wait(2)
-
-        poses = rotate(poses, 4)
-        mnx.map_attr('pos', nodes, poses[::2], fg)
-        mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
-        self.play(*mnx.transform_graph(mng, fg,
-                                       node_transform=HexTransform,
-                                       edge_transform=HexTransform,))
-
-        self.wait(2)
+        self.play(ApplyMethod(eq2.move_to,
+                              eq3.submobjects[0].get_center()),
+                  FadeIn(eq3.submobjects[1]))
+        self.wait(4)
 
 
 # %%
