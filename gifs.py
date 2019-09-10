@@ -11,6 +11,137 @@ if True:
 
 
 # %%
+class IntroFG(Scene):
+    def construct(self):
+        A = np.random.randn(10, 20, 100)
+        B = np.random.randn(20, 10)
+        C = np.random.randn(50, 20)
+        factors = {'A': A, 'B': B, 'C': C}
+
+        fg = factor_graph(factors, 'ijk,ji,lj->ijkl')
+
+        h = 3
+        y = -1
+        pos = np.zeros((3, 2))
+        pos[:, 1] = y
+        pos[:, 0] = (np.arange(3)-1)*h
+        mnx.map_attr('pos', ['A', 'B', 'C'], pos, fg)
+
+        fg.nodes['i']['pos'] = (-1.5, y-2)
+        fg.nodes['j']['pos'] = (0, y+2)
+        fg.nodes['k']['pos'] = (-5.5, y)
+        fg.nodes['l']['pos'] = (5.5, y)
+
+        # poses = nx.spring_layout(fg, center=np.array([0, -0.5]))
+        # scale = np.array([6.5, 2])
+        # for node, pos in poses.items():
+        #     fg.nodes[node]['pos'] = pos*scale
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        einsum = TexMobject(r"A_{", 'i', 'j', 'k', '}',
+                            'B_{', 'j', 'i', '}',
+                            'C_{', 'l', 'j', '}', '=',
+                            'D_{', 'k', 'l', '}', color=BLACK)
+        einsum.move_to(2.5*UP)
+
+        self.add(einsum)
+        self.wait(1)
+        fcol = GREEN
+        indic = Indicate
+        rt = 2
+        # self.play(
+        #     indic(einsum.submobjects[0], color=fcol, run_time=rt),
+        #     indic(einsum.submobjects[5], color=fcol, run_time=rt),
+        #     indic(einsum.submobjects[9], color=fcol, run_time=rt),
+        #     *[FadeIn(mng.nodes[fg.nodes[n]['mob_id']])
+        #       for n in fg.nodes.keys() if fg.nodes[n]['type'] == 'factor']
+        # )
+
+        self.play(
+            TransformFromCopy(einsum.submobjects[0],
+                              mng.nodes[fg.nodes['A']['mob_id']]),
+            TransformFromCopy(einsum.submobjects[5],
+                              mng.nodes[fg.nodes['B']['mob_id']]),
+            TransformFromCopy(einsum.submobjects[9],
+                              mng.nodes[fg.nodes['C']['mob_id']]),
+        )
+
+        self.wait(2)
+
+        vcol = RED
+        # self.play(
+        #     indic(einsum.submobjects[1], color=vcol, run_time=rt),
+        #     indic(einsum.submobjects[2], color=vcol, run_time=rt),
+        #     indic(einsum.submobjects[3], color=vcol, run_time=rt),
+        #     indic(einsum.submobjects[10], color=vcol, run_time=rt),
+        #     *[FadeIn(mng.nodes[fg.nodes[n]['mob_id']])
+        #       for n in fg.nodes.keys() if fg.nodes[n]['type'] == 'variable']
+        # )
+
+        self.play(
+            TransformFromCopy(einsum.submobjects[1],
+                              mng.nodes[fg.nodes['i']['mob_id']]),
+            TransformFromCopy(einsum.submobjects[2],
+                              mng.nodes[fg.nodes['j']['mob_id']]),
+            TransformFromCopy(einsum.submobjects[3],
+                              mng.nodes[fg.nodes['k']['mob_id']]),
+            TransformFromCopy(einsum.submobjects[10],
+                              mng.nodes[fg.nodes['l']['mob_id']]),
+        )
+        self.add_foreground_mobjects(*mng.nodes.values())
+        self.wait(2)
+
+        creation = ShowCreation
+        self.play(
+            *[creation(mng.edges[fg.edges[e]['mob_id']])
+              for e in fg.edges('A', keys=True)],
+            *[indic(m, color=RED) for m in einsum.submobjects[0:5]]
+        )
+        self.wait(1)
+
+        self.play(
+            *[creation(mng.edges[fg.edges[e]['mob_id']])
+              for e in fg.edges('B', keys=True)],
+            *[indic(m, color=RED) for m in einsum.submobjects[5:8]]
+        )
+        self.wait(1)
+
+        self.play(
+            *[creation(mng.edges[fg.edges[e]['mob_id']])
+              for e in fg.edges('C', keys=True)],
+            *[indic(m, color=RED) for m in einsum.submobjects[8:13]]
+        )
+        self.wait(1)
+
+        self.clear()
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+        self.add(einsum, mng)
+
+        fg = fg.copy()
+        fg.nodes['i']['summed'] = True
+        fg.nodes['j']['summed'] = True
+        self.play(*mnx.transform_graph(mng, fg),
+                  *[indic(m, color=RED) for m in einsum.submobjects[15:]]
+                  )
+
+        # self.bring_to_back(*[mng.edges[fg.edges[e]['mob_id']]
+        # for e in fg.edges('A', keys=True)])
+
+        fg = nx.contracted_nodes(fg, 'B', 'A')
+        fg = nx.contracted_nodes(fg, 'B', 'i')
+        fg = nx.contracted_nodes(fg, 'B', 'j')
+        fg = nx.contracted_nodes(fg, 'B', 'C')
+        fg2 = nx.relabel_nodes(fg, {'B': 'D'})
+        self.play(*mnx.transform_graph(mng, fg),
+                  Transform(mng.nodes[fg.node['B']['mob_id']],
+                            get_fg_node('D', fg2))
+                  )
+
+        self.wait(2)
+
+
+# %%
 class MatVec(Scene):
     def construct(self):
 
@@ -247,7 +378,8 @@ class TraceCyclic(Scene):
         pos = np.zeros((n, 2))
         pos[:, 1] = 1
         pos[:, 0] = (np.arange(n)-n/2.0 + 0.5)*h
-        mnx.map_attr('pos', ['i', 'A', 'j', 'k', 'B', 'l', 'm', 'C', 'n'], pos, fg)
+        mnx.map_attr('pos', ['i', 'A', 'j', 'k', 'B', 'l', 'm', 'C', 'n'],
+                     pos, fg)
 
         mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
 
@@ -318,16 +450,16 @@ class TraceCyclic(Scene):
         hex = sp.RegularPolygon(sp.Point2D(0, -1), r=2.5, n=12)
         poses = [np.array(p.evalf()).astype(np.float64) for p in hex.vertices]
 
-        mnx.map_attr('pos', nodes, poses[::2], fg)
+        mnx.map_attr('pos', nodes, poses[:: 2], fg)
         mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
         self.play(*mnx.transform_graph(mng, fg))
         self.wait(2)
 
         def rotate(l, n):
-            return l[-n:] + l[:-n]
+            return l[-n:] + l[: -n]
 
         poses = rotate(poses, 4)
-        mnx.map_attr('pos', nodes, poses[::2], fg)
+        mnx.map_attr('pos', nodes, poses[:: 2], fg)
         mnx.map_attr('points', edges, [[p*0.95] for p in poses[1::2]], fg)
         self.play(*mnx.transform_graph(mng, fg,
                                        node_transform=HexTransform,
