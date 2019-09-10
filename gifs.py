@@ -124,21 +124,30 @@ class IntroFG(Scene):
         self.play(*mnx.transform_graph(mng, fg),
                   *[indic(m, color=RED) for m in einsum.submobjects[15:]]
                   )
-
+        self.wait(2)
         # self.bring_to_back(*[mng.edges[fg.edges[e]['mob_id']]
         # for e in fg.edges('A', keys=True)])
+
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=9, height=5.5)
+        c.shift(y*UP)
+        self.play(FadeIn(c))
+        self.wait(2)
 
         fg = nx.contracted_nodes(fg, 'B', 'A')
         fg = nx.contracted_nodes(fg, 'B', 'i')
         fg = nx.contracted_nodes(fg, 'B', 'j')
         fg = nx.contracted_nodes(fg, 'B', 'C')
         fg2 = nx.relabel_nodes(fg, {'B': 'D'})
+        fg.nodes['k']['pos'] = (-2, y)
+        fg.nodes['l']['pos'] = (2, y)
         self.play(*mnx.transform_graph(mng, fg),
                   Transform(mng.nodes[fg.node['B']['mob_id']],
-                            get_fg_node('D', fg2))
+                            get_fg_node('D', fg2)),
+                  Transform(c, get_fg_node('D', fg2))
                   )
 
-        self.wait(2)
+        self.wait(4)
 
 
 # %%
