@@ -13,6 +13,7 @@ if True:
 # %%
 class IntroFG(Scene):
     def construct(self):
+        # add shapes in the first
         A = np.random.randn(10, 20, 100)
         B = np.random.randn(20, 10)
         C = np.random.randn(50, 20)
