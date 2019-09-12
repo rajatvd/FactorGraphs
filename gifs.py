@@ -40,11 +40,11 @@ class IntroFG(Scene):
 
         mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
 
-        Ashape = TexMobject(r'A \in ', r'\mathcal{R}^{10 \times 20 \times 100}',
+        Ashape = TexMobject(r'A \in ', r'\mathbb{R}^{10 \times 20 \times 100}',
                             color=BLACK)
-        Bshape = TexMobject(r'B \in ', r'\mathcal{R}^{20 \times 10}',
+        Bshape = TexMobject(r'B \in ', r'\mathbb{R}^{20 \times 10}',
                             color=BLACK)
-        Cshape = TexMobject(r'C \in ', r'\mathcal{R}^{50 \times 20}',
+        Cshape = TexMobject(r'C \in ', r'\mathbb{R}^{50 \times 20}',
                             color=BLACK)
 
         Ashape.shift(UP)
@@ -529,5 +529,11 @@ class KronProperty(Scene):
 
 # %%
 class SVD(Scene):
+    def construct(self):
+        pass
+
+
+# %%
+class CompCost(Scene):
     def construct(self):
         pass
