@@ -40,12 +40,34 @@ class IntroFG(Scene):
 
         mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
 
+        Ashape = TexMobject(r'A \in ', r'\mathcal{R}^{10 \times 20 \times 100}',
+                            color=BLACK)
+        Bshape = TexMobject(r'B \in ', r'\mathcal{R}^{20 \times 10}',
+                            color=BLACK)
+        Cshape = TexMobject(r'C \in ', r'\mathcal{R}^{50 \times 20}',
+                            color=BLACK)
+
+        Ashape.shift(UP)
+        Cshape.shift(DOWN)
+
+        self.add(Ashape, Bshape, Cshape)
+        self.wait(3)
+
         einsum = TexMobject(r"A_{", 'i', 'j', 'k', '}',
                             'B_{', 'j', 'i', '}',
                             'C_{', 'l', 'j', '}', '=',
                             'D_{', 'k', 'l', '}', color=BLACK)
         einsum.move_to(2.5*UP)
 
+        self.play(Transform(Ashape, VGroup(*einsum.submobjects[0:5])))
+        self.wait(1)
+        self.play(Transform(Bshape, VGroup(*einsum.submobjects[5:9])))
+        self.wait(1)
+        self.play(Transform(Cshape, VGroup(*einsum.submobjects[9:13])))
+        self.wait(1)
+
+        self.play(FadeIn(einsum))
+        self.clear()
         self.add(einsum)
         self.wait(1)
         fcol = GREEN
