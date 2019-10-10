@@ -53,17 +53,17 @@ class IntroFG(Scene):
         self.add(Ashape, Bshape, Cshape)
         self.wait(3)
 
-        einsum = TexMobject(r"A_{", 'i', 'j', 'k', '}',
+        einsum = TexMobject('D_{', 'k', 'l', '}', '=',
+                            'A_{', 'i', 'j', 'k', '}',
                             'B_{', 'j', 'i', '}',
-                            'C_{', 'l', 'j', '}', '=',
-                            'D_{', 'k', 'l', '}', color=BLACK)
+                            'C_{', 'l', 'j', '}', color=BLACK)
         einsum.move_to(2.5*UP)
 
-        self.play(Transform(Ashape, VGroup(*einsum.submobjects[0:5])))
+        self.play(Transform(Ashape, VGroup(*einsum.submobjects[5:9])))
         self.wait(1)
-        self.play(Transform(Bshape, VGroup(*einsum.submobjects[5:9])))
+        self.play(Transform(Bshape, VGroup(*einsum.submobjects[9:13])))
         self.wait(1)
-        self.play(Transform(Cshape, VGroup(*einsum.submobjects[9:13])))
+        self.play(Transform(Cshape, VGroup(*einsum.submobjects[13:])))
         self.wait(1)
 
         self.play(FadeIn(einsum))
@@ -82,11 +82,11 @@ class IntroFG(Scene):
         # )
 
         self.play(
-            TransformFromCopy(einsum.submobjects[0],
-                              mng.nodes[fg.nodes['A']['mob_id']]),
             TransformFromCopy(einsum.submobjects[5],
+                              mng.nodes[fg.nodes['A']['mob_id']]),
+            TransformFromCopy(einsum.submobjects[10],
                               mng.nodes[fg.nodes['B']['mob_id']]),
-            TransformFromCopy(einsum.submobjects[9],
+            TransformFromCopy(einsum.submobjects[14],
                               mng.nodes[fg.nodes['C']['mob_id']]),
         )
 
@@ -103,13 +103,13 @@ class IntroFG(Scene):
         # )
 
         self.play(
-            TransformFromCopy(einsum.submobjects[1],
+            TransformFromCopy(einsum.submobjects[6],
                               mng.nodes[fg.nodes['i']['mob_id']]),
-            TransformFromCopy(einsum.submobjects[2],
+            TransformFromCopy(einsum.submobjects[7],
                               mng.nodes[fg.nodes['j']['mob_id']]),
-            TransformFromCopy(einsum.submobjects[3],
+            TransformFromCopy(einsum.submobjects[8],
                               mng.nodes[fg.nodes['k']['mob_id']]),
-            TransformFromCopy(einsum.submobjects[10],
+            TransformFromCopy(einsum.submobjects[15],
                               mng.nodes[fg.nodes['l']['mob_id']]),
         )
         self.add_foreground_mobjects(*mng.nodes.values())
@@ -119,21 +119,21 @@ class IntroFG(Scene):
         self.play(
             *[creation(mng.edges[fg.edges[e]['mob_id']])
               for e in fg.edges('A', keys=True)],
-            *[indic(m, color=RED) for m in einsum.submobjects[0:5]]
+            *[indic(m, color=RED) for m in einsum.submobjects[5:10]]
         )
         self.wait(1)
 
         self.play(
             *[creation(mng.edges[fg.edges[e]['mob_id']])
               for e in fg.edges('B', keys=True)],
-            *[indic(m, color=RED) for m in einsum.submobjects[5:8]]
+            *[indic(m, color=RED) for m in einsum.submobjects[10:14]]
         )
         self.wait(1)
 
         self.play(
             *[creation(mng.edges[fg.edges[e]['mob_id']])
               for e in fg.edges('C', keys=True)],
-            *[indic(m, color=RED) for m in einsum.submobjects[8:13]]
+            *[indic(m, color=RED) for m in einsum.submobjects[14:]]
         )
         self.wait(1)
 
@@ -145,7 +145,7 @@ class IntroFG(Scene):
         fg.nodes['i']['summed'] = True
         fg.nodes['j']['summed'] = True
         self.play(*mnx.transform_graph(mng, fg),
-                  *[indic(m, color=RED) for m in einsum.submobjects[15:]]
+                  *[indic(m, color=RED) for m in einsum.submobjects[0:4]]
                   )
         self.wait(2)
         # self.bring_to_back(*[mng.edges[fg.edges[e]['mob_id']]
