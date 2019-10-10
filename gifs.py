@@ -534,6 +534,53 @@ class SVD(Scene):
 
 
 # %%
-class CompCost(Scene):
+class SumVar(Scene):
+    def construct(self):
+        A = np.random.randn(10, 100, 30, 40, 10)
+        factors = {'A': A}
+        vars = ['i', 'j', 'k', 'l', 'm']
+        fg = factor_graph(factors, 'ijklm->ijkl')
+        fg.nodes['A']['pos'] = (0, -1)
+        fg.nodes['i']['pos'] = (0, 1)
+        fg.nodes['j']['pos'] = (-2, 0)
+        fg.nodes['k']['pos'] = (-2, -2)
+        fg.nodes['l']['pos'] = (0, -3)
+        fg.nodes['m']['pos'] = (2, -1)
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+        sizes = A.shape
+
+        texs = [TexMobject(s) for s in sizes]
+
+        full = TexMobject(*[_ for t in sizes[:-1] for _ in [t, '\cdot']],
+                          sizes[-1], f'={np.array(sizes).prod()}', color=BLACK)
+
+        full.shift(2.5*UP)
+        self.add(mng)
+        self.wait(2)
+
+        self.play(TransformFromCopy(mng.edges[fg.edges['A', vars[0], 0]['mob_id']],
+                                    full.submobjects[0]))
+
+        for i, v in enumerate(vars[1:]):
+            self.play(TransformFromCopy(mng.edges[fg.edges['A', v, 0]['mob_id']],
+                                        full.submobjects[2*(i+1)]),
+                      FadeIn(full.submobjects[2*i+1]))
+
+        fg = fg.copy()
+        fg.remove_node('m')
+        self.play(*mnx.transform_graph(mng, fg), FadeIn(full.submobjects[-1]))
+
+        self.wait(4)
+
+
+# %%
+class CombineFactor(Scene):
+    def construct(self):
+        pass
+
+
+# %%
+class CombineVar(Scene):
     def construct(self):
         pass
