@@ -276,6 +276,62 @@ class Hadamard(Scene):
 
         self.wait(2)
 
+
+# %%
+class OuterProduct(Scene):
+    def construct(self):
+
+        A = np.random.randn(30)
+        B = np.random.randn(30)
+        factors = {'A': A, 'B': B}
+        fg = factor_graph(factors, 'i,j->ij')
+
+        tex = r"""
+        \begin{bmatrix}
+         & & \\
+         & C & \\
+         & &
+        \end{bmatrix}=
+        \begin{bmatrix}
+          \\
+         A  \\
+            \\
+        \end{bmatrix}
+        \begin{bmatrix}
+         & B^T & \\
+        \end{bmatrix}
+        """
+
+        fullatex = TexMobject(tex, color=BLACK)
+        fullatex.shift(1.5*UP)
+
+        h = 2.5
+        d = -1
+        pos = np.zeros((4, 2))
+        pos[:, 1] = d
+        pos[:, 0] = (np.arange(4)-1.5)*h
+        mnx.map_attr('pos', ['i', 'A', 'B', 'j'], pos, fg)
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        self.add(mng)
+        self.wait(2)
+
+        fg = combine_factors('A', 'B', fg)
+
+        pos = np.zeros((3, 2))
+        pos[:, 1] = d
+        pos[:, 0] = (np.arange(3)-1)*h
+        mnx.map_attr('pos', ['i', 'A', 'j'], pos, fg)
+        fg = nx.relabel_nodes(fg, {'A': 'C'})
+        mng.id_to_node[fg.node['C']['mob_id']] = 'C'
+        self.play(*mnx.transform_graph(mng, fg))
+        self.wait(0.5)
+        self.play(FadeIn(fullatex))
+
+        self.wait(4)
+
+
 # %%
 
 
@@ -553,11 +609,17 @@ class SumVar(Scene):
         texs = [TexMobject(s) for s in sizes]
 
         full = TexMobject(*[_ for t in sizes[:-1] for _ in [t, '\cdot']],
-                          sizes[-1], f'={np.array(sizes).prod()}', color=BLACK)
+                          sizes[-1], f'={np.array(sizes).prod()}'+r'\text{ additions}', color=BLACK)
+
+        circ = Circle(radius=1, color=ORANGE)
+        circ.move_to(DOWN)
 
         full.shift(2.5*UP)
         self.add(mng)
         self.wait(2)
+
+        self.play(ShowCreation(circ))
+        self.wait(0.5)
 
         self.play(TransformFromCopy(mng.edges[fg.edges['A', vars[0], 0]['mob_id']],
                                     full.submobjects[0]))
@@ -575,9 +637,61 @@ class SumVar(Scene):
 
 
 # %%
-class CombineFactor(Scene):
+class CombineFactors(Scene):
     def construct(self):
-        pass
+        A = np.random.randn(10, 20)
+        B = np.random.randn(30, 50)
+        factors = {'A': A, 'B': B}
+        vars = ['i', 'j', 'k', 'l']
+        d = -1
+        fg = factor_graph(factors, 'ij,kl->ijkl')
+        fg.nodes['A']['pos'] = (-1.5, d)
+        fg.nodes['B']['pos'] = (1.5, d)
+        fg.nodes['i']['pos'] = (-1.5, d+1.5)
+        fg.nodes['j']['pos'] = (-1.5, d-1.5)
+        fg.nodes['k']['pos'] = (1.5, d+1.5)
+        fg.nodes['l']['pos'] = (1.5, d-1.5)
+
+        sizes = A.shape + B.shape
+
+        mng = mnx.ManimGraph(fg, get_fg_node, get_fg_edge_curve)
+
+        full = TexMobject(*[_ for t in sizes[:-1] for _ in [t, '\cdot']],
+                          sizes[-1], f'={np.array(sizes).prod()}'+r'\text{ multiplications}',
+                          color=BLACK)
+
+        circ = Circle(radius=1, color=ORANGE)
+        circ.move_to(d*UP)
+
+        full.shift(2.5*UP)
+        self.add(mng)
+        self.wait(2)
+
+        fg = combine_factors('A', 'B', fg)
+        fg.node['A']['pos'] = (0, d)
+        fg = nx.relabel_nodes(fg, {'A': 'C'})
+        mng.id_to_node[fg.node['C']['mob_id']] = 'C'
+        self.play(*mnx.transform_graph(mng, fg))
+
+        self.wait(1)
+
+        self.play(ShowCreation(circ))
+        self.wait(0.5)
+
+        self.play(TransformFromCopy(mng.edges[fg.edges['C', 'i', 0]['mob_id']],
+                                    full.submobjects[0]))
+        self.play(TransformFromCopy(mng.edges[fg.edges['C', 'j', 0]['mob_id']],
+                                    full.submobjects[2]),
+                  FadeIn(full.submobjects[1]))
+        self.play(TransformFromCopy(mng.edges[fg.edges['C', 'k', 0]['mob_id']],
+                                    full.submobjects[4]),
+                  FadeIn(full.submobjects[2+1]))
+        self.play(TransformFromCopy(mng.edges[fg.edges['C', 'l', 0]['mob_id']],
+                                    full.submobjects[6]),
+                  FadeIn(full.submobjects[4+1]))
+        self.play(FadeIn(full.submobjects[-1]))
+
+        self.wait(2)
 
 
 # %%
