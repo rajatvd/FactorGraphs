@@ -203,7 +203,24 @@ class MatVec(Scene):
         fg.nodes['j']['summed'] = True
         self.play(*mnx.transform_graph(mng, fg))
 
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=7, height=3.5)
+        x, y = fg.nodes['j']['pos']
+        c.move_to(x*RIGHT+y*DOWN)
+        self.play(FadeIn(c))
         self.wait(2)
+
+        fg = nx.contracted_nodes(fg, 'A', 'j')
+        fg = nx.contracted_nodes(fg, 'A', 'B')
+        fg.node['A']['pos'] = (x, y)
+        fg = nx.relabel_nodes(fg, {'A': 'AB'})
+        mng.relabel_id(fg, 'A', 'AB')
+        fg.nodes['i']['pos'] = (-1, y)
+        self.play(*mnx.transform_graph(mng, fg),
+                  Transform(c, get_fg_node('AB', fg))
+                  )
+
+        self.wait(3)
 
 
 # %%
@@ -236,6 +253,24 @@ class MatMul(Scene):
         fg = fg.copy()
         fg.nodes['j']['summed'] = True
         self.play(*mnx.transform_graph(mng, fg))
+
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=6.5, height=3.5)
+        x, y = fg.nodes['j']['pos']
+        c.move_to(x*RIGHT+y*DOWN)
+        self.play(FadeIn(c))
+        self.wait(2)
+
+        fg = nx.contracted_nodes(fg, 'A', 'j')
+        fg = nx.contracted_nodes(fg, 'A', 'B')
+        fg.node['A']['pos'] = (x, y)
+        fg = nx.relabel_nodes(fg, {'A': 'AB'})
+        mng.relabel_id(fg, 'A', 'AB')
+        fg.nodes['i']['pos'] = (-2, y)
+        fg.nodes['l']['pos'] = (2, y)
+        self.play(*mnx.transform_graph(mng, fg),
+                  Transform(c, get_fg_node('AB', fg))
+                  )
 
         self.wait(2)
 
@@ -273,6 +308,25 @@ class Hadamard(Scene):
         fg.edges['B', 'j', 0]['points'] = [(1.5, -1)]
 
         self.play(*mnx.transform_graph(mng, fg))
+
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=6.5, height=3)
+        # c.move_to(x*RIGHT+y*DOWN)
+        self.play(FadeIn(c))
+        self.wait(2)
+
+        fg.edges['A', 'i', 0]['points'] = []
+        fg.edges['A', 'j', 0]['points'] = []
+        fg.edges['B', 'i', 0]['points'] = []
+        fg.edges['B', 'j', 0]['points'] = []
+
+        fg = combine_factors('A', 'B', fg, multiedges=False)
+        fg.nodes['A']['pos'] = (0, 0)
+        newn = r'A \odot B'
+        fg2 = nx.relabel_nodes(fg, {'A': newn})
+        self.play(*mnx.transform_graph(mng, fg),
+                  Transform(c, get_fg_node(newn, fg2, h=0.8, w=1.5))
+                  )
 
         self.wait(2)
 
@@ -425,8 +479,26 @@ class Trace(Scene):
 
         fg.nodes['i']['summed'] = True
         self.play(*mnx.transform_graph(mng, fg), Transform(eq1, eq2))
+        self.wait(1)
 
-        self.wait(4)
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=4.5, height=3)
+        # c.move_to(x*RIGHT+y*DOWN)
+        self.play(FadeIn(c))
+        self.wait(2)
+
+        fg.edges['A', 'i', 0]['points'] = []
+        fg.edges['A', 'i', 1]['points'] = []
+
+        fg = nx.contracted_nodes(fg, 'A', 'i')
+        fg.nodes['A']['pos'] = (0, 0)
+        newn = r'\text{tr}(A)'
+        fg2 = nx.relabel_nodes(fg, {'A': newn})
+        self.play(*mnx.transform_graph(mng, fg),
+                  Transform(c, get_fg_node(newn, fg2, h=0.8, w=1.5))
+                  )
+
+        self.wait(2)
 
 
 # %%
@@ -611,15 +683,20 @@ class SumVar(Scene):
         full = TexMobject(*[_ for t in sizes[:-1] for _ in [t, '\cdot']],
                           sizes[-1], f'={np.array(sizes).prod()}'+r'\text{ additions}', color=BLACK)
 
-        circ = Circle(radius=1, color=ORANGE)
-        circ.move_to(DOWN)
+        # circ = Circle(radius=1, color=ORANGE)
+        # circ.move_to(DOWN)
 
         full.shift(2.5*UP)
         self.add(mng)
         self.wait(2)
 
-        self.play(ShowCreation(circ))
-        self.wait(0.5)
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=4.5, height=3)
+        c.move_to(DOWN+1*RIGHT)
+        self.play(FadeIn(c))
+
+        # self.play(ShowCreation(circ))
+        # self.wait(0.5)
 
         self.play(TransformFromCopy(mng.edges[fg.edges['A', vars[0], 0]['mob_id']],
                                     full.submobjects[0]))
@@ -629,11 +706,17 @@ class SumVar(Scene):
                                         full.submobjects[2*(i+1)]),
                       FadeIn(full.submobjects[2*i+1]))
 
-        fg = fg.copy()
-        fg.remove_node('m')
-        self.play(*mnx.transform_graph(mng, fg), FadeIn(full.submobjects[-1]))
+        self.wait(0.5)
 
-        self.wait(4)
+        self.play(FadeIn(full.submobjects[-1]))
+        self.wait(1)
+
+        fg = nx.contracted_nodes(fg, 'A', 'm')
+        self.play(*mnx.transform_graph(mng, fg),
+                  Transform(c, get_fg_node('A', fg))
+                  )
+
+        self.wait(3)
 
 
 # %%
@@ -660,9 +743,6 @@ class CombineFactors(Scene):
                           sizes[-1], f'={np.array(sizes).prod()}'+r'\text{ multiplications}',
                           color=BLACK)
 
-        circ = Circle(radius=1, color=ORANGE)
-        circ.move_to(d*UP)
-
         full.shift(2.5*UP)
         self.add(mng)
         self.wait(2)
@@ -670,13 +750,15 @@ class CombineFactors(Scene):
         fg = combine_factors('A', 'B', fg)
         fg.node['A']['pos'] = (0, d)
         fg = nx.relabel_nodes(fg, {'A': 'C'})
-        mng.id_to_node[fg.node['C']['mob_id']] = 'C'
+        mng.relabel_id(fg, 'A', 'C')
         self.play(*mnx.transform_graph(mng, fg))
 
-        self.wait(1)
+        c = Ellipse(color=GREEN, fill_color=GREEN, fill_opacity=0.3,
+                    width=2, height=2)
+        c.move_to(UP*d)
+        self.play(FadeIn(c))
 
-        self.play(ShowCreation(circ))
-        self.wait(0.5)
+        self.wait(1)
 
         self.play(TransformFromCopy(mng.edges[fg.edges['C', 'i', 0]['mob_id']],
                                     full.submobjects[0]))
@@ -690,6 +772,10 @@ class CombineFactors(Scene):
                                     full.submobjects[6]),
                   FadeIn(full.submobjects[4+1]))
         self.play(FadeIn(full.submobjects[-1]))
+
+        self.play(
+            Transform(c, get_fg_node('C', fg))
+        )
 
         self.wait(2)
 

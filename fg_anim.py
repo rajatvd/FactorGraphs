@@ -31,7 +31,7 @@ def to_3d(pos):
 # %%
 
 
-def get_fg_node(n, G):
+def get_fg_node(n, G, h=0.8, w=0.8):
     """Get a mobject for node n in the factor graph G.
 
     Green square for factors and white/gray circle for variables depending on
@@ -54,7 +54,7 @@ def get_fg_node(n, G):
     node = G.node[n]
     type_to_shape = {
         'variable': Circle,
-        'factor': Square
+        'factor': Rectangle
     }
 
     def node_color(node_dict):
@@ -64,8 +64,8 @@ def get_fg_node(n, G):
 
     bg = type_to_shape[node['type']](color=BLACK, fill_color=node_color(node),
                                      fill_opacity=1, radius=0.3,
-                                     side_length=0.8)
-    node_name = TextMobject(n, color=BLACK)
+                                     height=h, width=w)
+    node_name = TexMobject(n, color=BLACK)
     x, y = node['pos']
     grp = VGroup(bg, node_name)
     grp.move_to(x*RIGHT + y*UP)
